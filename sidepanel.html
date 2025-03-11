@@ -1,0 +1,1587 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Dragon</title>
+    <script src="lib/chart.js"></script>
+    <script src="lib/vis-network.min.js"></script>
+    <link
+      rel="stylesheet"
+      href="/fontawesome/css/all.min.css"
+    />
+  
+
+    <style>
+           :root {
+                  --primary-color: #2070cb;
+                  --background-dark: #1b2240;
+                  --text-light: #FAFAFA;
+                  --danger-color: #ff1c4d;
+                  --success-color: #00C851;
+                  --card-bg: rgba(255, 255, 255, 0.05);
+              }
+
+              body,
+              html {
+                  margin: 0;
+                  padding: 0;
+                  width: 100%;
+                  height: 100%;
+                  background-color: #0e0e18;
+                  color: var(--text-light);
+                  font-family: 'Inter', sans-serif;
+                  font-size: 14px;
+              }
+
+              .container {
+                  padding: 6px;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 6px;
+              }
+              /* Search Header */
+
+              .search-header {
+                  display: flex;
+                  padding: 8px;
+                  background: var(--card-bg);
+                  border-radius: 8px;
+                  margin-bottom: 0;
+              }
+
+              .address-input {
+                  width: 100%;
+                  background: rgba(255, 255, 255, 0.1);
+                  border: 1px solid rgba(255, 255, 255, 0.2);
+                  padding: 8px 12px;
+                  border-radius: 6px;
+                  color: var(--text-light);
+                  font-size: 13px;
+                  outline: none;
+              }
+
+              .address-input:focus {
+                  border-color: var(--primary-color);
+              }
+              /* Info Grid */
+
+              .info-grid {
+                  display: grid;
+                  grid-template-columns: repeat(4, 1fr);
+                  gap: 8px;
+              }
+
+              .info-card {
+                  background: var(--card-bg);
+                  padding: 10px;
+                  border-radius: 8px;
+                  text-align: center;
+              }
+
+              .info-card h3 {
+                  margin: 0 0 4px 0;
+                  font-size: 12px;
+                  opacity: 0.8;
+              }
+
+              .info-card p {
+                  margin: 0;
+                  font-size: 13px;
+                  font-weight: 500;
+              }
+              /* Security Checks */
+
+              .security-grid {
+                  display: grid;
+                  grid-template-columns: repeat(4, 1fr);
+                  gap: 2px;
+                  margin-top: 2px;
+              }
+
+              .security-item {
+                position: relative;
+                overflow: visible !important;
+                z-index: 9999; 
+                  display: flex;
+                  flex-direction: column;
+                  align-items: center;
+                  gap: 1px;
+                  font-size: 15px;
+                  background: var(--card-bg);
+                  padding: 4px;
+                  border-radius: 3px;
+                  text-align: center;
+              }
+
+              .security-item i {
+                  font-size: 11px;
+              }
+
+              .security-item span {
+                  font-size: 7.5px;
+              }
+
+              .success {
+                  color: var(--success-color);
+              }
+
+              .danger {
+                  color: var(--danger-color);
+              }
+              /* Platform Links */
+
+              .links-section {
+                  display: grid;
+                  grid-template-columns: repeat(3, 1fr);
+                  gap: 6px;
+              }
+
+              .links-box {
+                  background: var(--card-bg);
+                  padding: 10px;
+                  border-radius: 8px;
+                  min-width: 0;
+              }
+
+              .links-box h4 {
+                  margin: 0 0 8px 0;
+                  font-size: 11.5px;
+                  opacity: 0.8;
+                  text-align: center;
+                  color: var(--text-light);
+                  white-space: nowrap;
+                  overflow: hidden;
+                  text-overflow: ellipsis;
+              }
+
+              .links-grid {
+                  display: grid;
+                  grid-template-columns: repeat(2, 1fr);
+                  gap: 6px;
+                  height: calc(100% - 28px);
+              }
+
+              .platform-link {
+                  display: flex;
+                  justify-content: center;
+                  align-items: center;
+                  padding: 8px;
+                  background: rgba(255, 19, 19, 0.08);
+                  border-radius: 6px;
+                  cursor: pointer;
+                  transition: all 0.2s ease;
+                  color: var(--text-light);
+                  text-decoration: none;
+              }
+
+              .platform-link:hover {
+                  background: rgba(255, 255, 255, 0.12);
+                  transform: translateY(-1px);
+                  color: var(--primary-color);
+              }
+
+              .platform-link i {
+                  font-size: 14px;
+              }
+              /* Charts */
+
+              .chart-container {
+                  background: var(--card-bg);
+                  padding: 12px;
+                  border-radius: 8px;
+                  height: 180px;
+              }
+
+              .token-image-container {
+                  flex-shrink: 0;
+                  display: flex;
+                  flex-direction: column;
+                  align-items: center;
+                  justify-content: center;
+              }
+
+              .token-image {
+                  width: 64px;
+                  height: 64px;
+                  border-radius: 50%;
+                  background: rgba(255, 255, 255, 0.1);
+                  padding: 2px;
+                  object-fit: cover;
+              }
+
+              .token-image-placeholder {
+                  width: 64px;
+                  height: 64px;
+                  border-radius: 100%;
+                  background: rgba(255, 255, 255, 0.1);
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  overflow: hidden;
+                  margin: 0 auto;
+              }
+
+              .token-image-placeholder img {
+                  width: 64px;
+                  padding-left: 3.8%;
+                  height: 64px;
+                  border-radius: 100%;
+                  object-fit: cover;
+                  border: none;
+                  background: none;
+              }
+
+              .token-header {
+                  background: var(--card-bg);
+                  padding: 4px;
+                  margin-bottom: 2px;
+                  border-radius: 8px;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 2px;
+              }
+
+              .header-row {
+                  display: grid;
+                  grid-template-columns: 70px 1fr 1fr;
+                  gap: 2px;
+                  align-items: center;
+                  margin-bottom: 0;
+              }
+
+              .image-column {
+                  width: 64px;
+              }
+
+              .image-column img {
+                  width: 64px;
+                  height: 64px;
+                  border-radius: 50%;
+                  object-fit: cover;
+                  border: none;
+                  background: none;
+              }
+
+              background: rgba(255, 255, 255, 0.1);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              margin: 0 auto;
+              overflow: hidden;
+            }
+          .token-image-placeholder img {
+              width: 40px;
+              height: 40px;
+              object-fit: contain;
+              border-radius: 50%;
+          }
+          .name-column,
+          .cap-column {
+              background: #31323c;
+              padding: 6px;
+              border-radius: 6px;
+          }
+          .name-column h3,
+          .cap-column h3 {
+              font-size: 12px;
+              margin: 0 0 2px 0;
+              opacity: 0.7;
+          }
+          .name-column p,
+          .cap-column p {
+              font-size: 14px;
+              margin: 0 0 10px 0;
+              font-weight: 500;
+          }
+          .token-stats-grid {
+              display: grid;
+              grid-template-columns: repeat(3, 1fr);
+              gap: 2px;
+              margin-top: 1px;
+          }
+          .security-grid {
+              display: grid;
+              grid-template-columns: repeat(4, 1fr);
+              gap: 2px;
+              margin-top: 2px;
+          }
+          .stats-grid {
+              display: grid;
+              grid-template-columns: repeat(3, 1fr);
+              gap: 8px;
+          }
+          .stat-item {
+              background: rgba(255, 255, 255, 0.05);
+              padding: 6px;
+              border-radius: 6px;
+              text-align: center;
+          }
+          .platform-links {
+              display: grid;
+              
+              grid-template-columns: repeat(4, 1fr) 12px repeat(3, 1fr);
+              gap: 8px;
+              margin: 5px auto;
+              width: calc(100% - 16px);
+              justify-content: center;
+              align-items: center;
+          }
+          .platform-link {
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              padding: 8px;
+              background: rgba(255, 255, 255, 0.11);
+              border-radius: 6px;
+              color: var(--text-light);
+              text-decoration: none;
+              transition: all 0.2s ease;
+          }
+          .platform-link:hover {
+              background: rgba(255, 255, 255, 0.12);
+              transform: translateY(-1px);
+              color: var(--primary-color);
+          }
+          .platform-link i {
+              font-size: 14px;
+          }
+          .success {
+              color: var(--success-color);
+          }
+          .danger {
+              color: var(--danger-color);
+          }
+          h3,
+          h4 {
+              margin: 0;
+              font-size: 11px;
+              opacity: 0.7;
+          }
+          p {
+              margin: 4px 0 0 0;
+              font-size: 14px;
+              font-weight: 500;
+          }
+          .community-status {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              gap: 4px;
+              padding-top: 2px;
+          }
+          .community-icons {
+              display: flex;
+              gap: 2px;
+              font-size: 11px;
+          }
+          .community-label {
+              font-size: 9px;
+              text-align: center;
+              margin-top: 1px;
+              display: block;
+          }
+          .token-status {
+              margin-top: 4px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 4px;
+              font-size: 11px;
+              color: var(--success-color);
+              background: rgba(0, 200, 81, 0.1);
+              padding: 4px 8px;
+              border-radius: 12px;
+              width: fit-content;
+              margin-left: auto;
+              margin-right: auto;
+          }
+          .token-status i {
+              font-size: 10px;
+          }
+          .token-status span {
+              text-align: center;
+              line-height: 1.2;
+          }
+
+
+
+
+
+          
+          .bundle-section {
+              background: var(--card-bg);
+              padding: 8px;
+              border-radius: 8px;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              gap: 2px;
+              width: calc(100% - 12px);
+              box-sizing: border-box;
+              margin: 0 auto;
+          }
+          .bundle-header {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 2px;
+              margin-bottom: 0;
+              padding: 0;
+              width: 100%;
+          }
+          .bundle-title-stats {
+              display: flex;
+              align-items: center;
+              gap: 12px;
+          }
+          .bundle-stats {
+            display: flex;
+            gap: 6px;
+            flex-wrap: nowrap;
+            margin-top: 8px !important;
+        }
+        .bundle-stats div {
+            padding: 2px 6px;
+            background: #40414c;
+            border-radius: 6px;
+            font-size: 12px;
+            color: var(--text-light);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            white-space: nowrap;
+        }
+        .bundle-stats strong {
+            color: #ffffff;
+            font-weight: bold;
+        }
+          /* .bundle-chart-container {
+              width: 75%;
+              display: flex;
+              flex-wrap: wrap;
+              justify-content: center;
+              align-items: center;
+              gap: 1rem;
+              height: 70px;
+              position: relative;
+              padding: 4px;
+              background: rgba(255, 255, 255, 0.02);
+              border-radius: 8px;
+              border: 1px solid rgba(255, 255, 255, 0.1);
+
+
+
+     
+      flex: 1;
+      height: 130px; 
+
+          } */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+          .bundle-chart-container {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    position: relative;
+    overflow: visible !important;
+   
+    
+    padding: 4px;
+    background: #31323c;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+
+    
+    flex: 1;
+    height: auto; 
+}
+
+.bundle-canvas {
+    flex: 0 1 calc(33.33% - 1rem);
+    max-width: calc(33.33% - 1rem);
+    /* Reduce this height to make the chart smaller */
+    height: 80px; 
+    margin-bottom: 1rem;
+    overflow: visible !important;
+    position: relative;
+    z-in: 10;
+  }
+  
+  /* Alternatively, you could directly target the canvas */
+  #bundleDistChart {
+    width: 150px;  /* Adjust as needed */
+    height: 150px; /* Adjust as needed */
+    display: block; /* Ensures the sizing takes effect */
+  }
+
+.bundle-canvas .chartjs-tooltip {
+    z-index: 20 !important;  
+    position: absolute !important;  
+    overflow: visible !important;   
+    pointer-events: none !important; 
+
+}
+
+          canvas#bundleDistChart {
+              width: 100% !important;
+              height: 100% !important;
+              max-width: 100%;
+          }
+          .charts-container {
+              display: flex;
+              gap: 6px;
+              margin-top: 0;
+          }
+          .bundle-chart-container {
+              flex: 1;
+              height: 130px; 
+              position: relative;
+              padding: 4px;
+              background: #31323c;
+              border-radius: 8px;
+              border: 1px solid rgba(255, 255, 255, 0.1);
+              
+          }
+          canvas {
+              width: 100% !important;
+              height: 100% !important;
+              max-width: 100%;
+          }
+
+
+          .bundle-list {
+              margin-top: 16px;
+              background: rgba(255, 255, 255, 0.02);
+              background: rgba(103, 100, 100, 0.744);
+
+              border-radius: 8px;
+              border: 1px solid rgba(255, 255, 255, 0.05);
+          }
+          .bundle-item {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              padding: 12px;
+              border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+              cursor: pointer;
+              transition: background-color 0.2s;
+          }
+          .bundle-item:last-child {
+              border-bottom: none;
+          }
+          .bundle-item:hover {
+              background: rgba(255, 255, 255, 0.05);
+          }
+          .bundle-item-left {
+              display: flex;
+              align-items: center;
+              gap: 12px;
+          }
+          .bundle-mini-chart {
+              width: 32px;
+              height: 32px;
+          }
+          .bundle-info {
+              display: flex;
+              flex-direction: column;
+              gap: 2px;
+          }
+          .bundle-title {
+              font-size: 13px;
+              font-weight: 500;
+              color: var(--text-light);
+          }
+          .bundle-details {
+              display: flex;
+              align-items: center;
+              gap: 6px;
+              font-size: 11px;
+              color: rgba(255, 255, 255, 0.5);
+          }
+          .bundle-details span {
+              white-space: nowrap;
+          }
+          .bundle-active {
+              display: flex;
+              flex-direction: column;
+              align-items: flex-end;
+              gap: 4px;
+          }
+          .active-bar {
+              width: 100px;
+              height: 4px;
+              background: rgba(255, 107, 139, 0.2);
+              border-radius: 2px;
+              overflow: hidden;
+          }
+          .active-fill {
+              height: 100%;
+              background: rgba(255, 107, 139, 0.9);
+              border-radius: 2px;
+              transition: width 0.3s ease;
+          }
+          .bundle-active span {}
+          .bundle-title-stats h4 {
+              margin: 0;
+              padding: 0;
+              text-align: center;
+              width: 100%;
+              font-size: 13px;
+          }
+
+
+
+
+
+
+
+          .sniper-section {
+              background: var(--card-bg);
+              height: 220px;
+              padding: 10px;
+              border-radius: 8px;
+              width: calc(100% - 12px);
+              box-sizing: border-box;
+              border: 1px solid rgba(255, 255, 255, 0.08);
+              box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+              margin: 2px auto 0;
+          }
+          .sniper-stats {
+              display: grid;
+              grid-template-columns: repeat(2, 1fr);
+              gap: 6px;
+              margin: 6px 0;
+          }
+          .sniper-stats div {
+              padding: 4px 6px;
+              background: rgba(255, 255, 255, 0.05);
+              border-radius: 6px;
+              font-size: 10px;
+              text-align: center;
+              border: 1px solid rgba(255, 255, 255, 0.05);
+          }
+          .dev-stat {
+              color: #ff2453;
+              font-size: 9px;
+              opacity: 0.9;
+          }
+          .charts-container {
+              display: grid;
+              grid-template-columns: repeat(2, 1fr);
+              gap: 6px;
+              margin: 6px 0;
+          }
+          .chart-box {
+              background: #31323c;
+              height: 175px;
+              border-radius: 6px;
+              border: 1px solid rgba(255, 255, 255, 0.1);
+              padding: 6px;
+              position: relative;
+          }
+          .chart-box h5 {
+              margin: 0 0 4px 0;
+              height: 13px;
+              font-size: 12px;
+              text-align: center;
+              opacity: 0.7;
+          }
+          .chart-wrapper {
+              height: 140px;
+              position: relative;
+          }
+          .total-stats {
+              display: grid;
+              grid-template-columns: repeat(2, 1fr);
+              gap: 6px;
+              margin-top: 6px;
+          }
+          .total-stats div {
+              padding: 4px 6px;
+              background: rgba(255, 255, 255, 0.05);
+              border-radius: 6px;
+              font-size: 10px;
+              text-align: center;
+              border: 1px solid rgba(255, 255, 255, 0.05);
+          }
+          .sniper-title-stats h4 {
+              font-size: 12px;
+              margin: 0;
+              padding: 0;
+          }
+          .sniper-header {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              margin-bottom: 6px;
+              text-align: center;
+              width: 100%;
+          }
+          .sniper-title-stats {
+              width: 100%;
+              text-align: center;
+          }
+          .sniper-title-stats h4 {
+              font-size: 13px;
+              margin: 0;
+              padding: 0;
+              text-align: center;
+              width: 100%;
+          }
+          .timeline-header {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              margin-bottom: 6px;
+              text-align: center;
+              width: 100%;
+          }
+          .timeline-title-stats h4 {
+              font-size: 13px;
+              margin: 0;
+              padding: 0;
+          }
+          .timeline-section {
+              background: var(--card-bg);
+              padding: 10px;
+              border-radius: 12px;
+              background-color:#31323c;
+              width: calc(100% - 12px);
+              box-sizing: border-box;
+              border: 1px solid rgba(255, 255, 255, 0.08);
+              box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+              margin: 6px auto 0;
+          }
+          .timeline-content {
+              background: rgba(255, 255, 255, 0.02);
+              border-radius: 8px;
+              border: 1px solid rgba(255, 255, 255, 0.08);
+              padding: 10px;
+              box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+              width: calc(100% - 12px);
+              box-sizing: border-box;
+              margin: 2px auto 0;
+          }
+          .timeline-chart {
+              height: 120px;
+              background-color:#31323c;
+              margin: 6px 0 12px 0;
+              border-radius: 8px;
+              border: 1px solid rgba(255, 255, 255, 0.1);
+
+          }
+          .timeline-legend {
+              display: flex;
+              justify-content: flex-start;
+              gap: 12px;
+              margin-bottom: 4px;
+              padding: 4px 0;
+          }
+          .legend-item {
+              display: flex;
+              align-items: center;
+              gap: 4px;
+              font-size: 11px;
+              color: rgba(255, 255, 255, 0.8);
+          }
+          .legend-item.token-gen {
+              margin-left: auto;
+          }
+          .legend-item.token-gen i {
+              font-size: 10px;
+              color: rgba(255, 255, 255, 1);
+          }
+          .legend-item .solscan-link {
+              color: rgba(255, 255, 255, 1);
+              text-decoration: none;
+              font-size: 11px;
+              display: flex;
+              align-items: center;
+              gap: 4px;
+          }
+          .legend-item .solscan-link:hover {
+              color: var(--primary-color);
+          }
+          .legend-color {
+              width: 8px;
+              height: 8px;
+              border-radius: 2px;
+          }
+          .legend-color.dev {
+              background: rgba(255, 255, 255, 0.8);
+          }
+          .legend-color.normal {
+              background: rgba(255, 255, 255, 0.4);
+          }
+          .timeline-stats {
+              display: grid;
+              grid-template-columns: repeat(2, 1fr);
+              gap: 6px;
+              margin-top: 4px;
+          }
+          .timeline-stats .stat-item {
+              padding: 4px 6px;
+              background: #3a3b46;
+              border-radius: 6px;
+              font-size: 12px;
+              text-align: left;
+              border: 1px solid rgba(255, 255, 255, 0.05);
+              display: flex;
+              align-items: center;
+              gap: 4px;
+          }
+          .timeline-stats .stat-item strong {
+              font-size: 12px;
+              transition: color 0.3s ease;
+          }
+          .timeline-stats .stat-label {
+              color: rgb(255, 255, 255);
+          }
+          .timeline-stats strong {
+              color: var(--text-light);
+          }
+          .timeline-stats-container {
+              background: rgba(255, 255, 255, 0.02);
+              border-radius: 8px;
+              border: 1px solid rgba(255, 255, 255, 0.08);
+              padding: 10px;
+          }
+          .timeline-event {
+              display: none;
+          }
+          .event-header {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              font-size: 10px;
+              padding: 4px 8px;
+          }
+          .solscan-link {
+              color: #ffffff;
+              text-decoration: none;
+              font-size: 10px;
+              display: flex;
+              align-items: center;
+              gap: 4px;
+          }
+          .solscan-link:hover {
+              opacity: 0.8;
+          }
+          .solscan-link i {
+              font-size: 9px;
+          }
+          .timeline-stats {
+              display: grid;
+              grid-template-columns: repeat(2, 1fr);
+              gap: 6px;
+          }
+          .timeline-stats div {
+              padding: 4px 6px;
+              background: rgba(255, 255, 255, 0.05);
+              border-radius: 6px;
+              font-size: 12px;
+              text-align: center;
+              border: 1px solid rgba(255, 255, 255, 0.05);
+          }
+          .dev-stat {
+              color: #ff6b8b;
+              font-size: 11px;
+              opacity: 0.9;
+          }
+          /* (NOTE: The wallet-analysis-section is merged into the sniper-section via carousel.) */
+          .danger-value {
+              color: var(--danger-color) !important;
+          }
+          .success {
+              color: var(--success-color);
+          }
+          .community-label[title] {
+              text-decoration: underline;
+              text-decoration-style: dotted;
+              text-underline-offset: 2px;
+          }
+          /* Token Stats Items */
+          .token-stats-grid {
+              display: grid;
+              grid-template-columns: repeat(3, 1fr);
+              gap: 2px;
+              margin-top: 1px;
+          }
+          .token-stat-item {
+              text-align: center;
+              background: var(--card-bg);
+              padding: 2px;
+              border-radius: 3px;
+          }
+          .token-stat-item h4 {
+              font-size: 11px;
+              margin: 0 0 1px 0;
+              opacity: 0.7;
+          }
+          .token-stat-item p {
+              margin: 0;
+              font-size: 11px;
+              font-weight: 500;
+              color: var(--text-light);
+          }
+          .token-stat-item .community-status {
+              font-size: 11px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 2px;
+          }
+          .token-stat-item .community-status i {
+              font-size: 11px;
+          }
+          .token-name {
+              font-size: 12px;
+              margin: 0;
+              padding: 0;
+          }
+          .token-price {
+              font-size: 11px;
+              margin: 0;
+              padding: 0;
+          }
+          .section {
+              padding: 4px;
+              margin-bottom: 4px;
+          }
+          .token-info-section {
+              margin-top: 2px;
+              padding: 2px;
+          }
+          h1,
+          h2,
+          h3,
+          h4,
+          p {
+              margin: 0;
+              padding: 0;
+          }
+          .platform-link-spacer {
+              width: 12px;
+          }
+          .stat-box p {
+              margin: 0;
+              font-size: 16px;
+              font-weight: 500;
+              color: #FFFFFF;
+          }
+          .security-item .check-icon {
+              font-size: 16px;
+          }
+          .security-item p {
+              margin: 4px 0 0 0;
+              font-size: 15px;
+              color: #FFFFFF;
+              font-weight: 500;
+          }
+          .token-status span {
+              text-align: center;
+              line-height: 1.2;
+              font-size: 18px;
+              color: #FFFFFF;
+              font-weight: 500;
+          }
+          .stat-box {
+              background: rgba(255, 255, 255, 0.08);
+              padding: 10px;
+              border-radius: 6px;
+              height: 60px;
+              display: flex;
+              flex-direction: column;
+              justify-content: center;
+          }
+          .stat-box h3 {
+              margin: 0 0 4px 0;
+              font-size: 16px;
+              opacity: 0.7;
+              color: var(--text-light);
+          }
+          .stat-box p {
+              margin: 0;
+              font-size: 21px;
+              font-weight: 500;
+              color: #FFFFFF;
+              line-height: 1.2;
+          }
+          .token-stats {
+              display: grid;
+              grid-template-columns: repeat(2, 1fr);
+              gap: 8px;
+              width: 100%;
+          }
+          .security-item .check-icon {
+              font-size: 19px;
+          }
+          .security-item p {
+              margin: 4px 0 0 0;
+              font-size: 16px;
+              color: #FFFFFF;
+              font-weight: 500;
+          }
+          .token-status span {
+              text-align: center;
+              line-height: 1.2;
+              font-size: 18px;
+              color: #FFFFFF;
+              font-weight: 500;
+          }
+          /* Inactive platform links */
+          .platform-link.inactive {
+              opacity: 0.5;
+              cursor: default;
+              pointer-events: none;
+          }
+          .platform-link:not(.inactive):hover {
+              background: rgba(255, 255, 255, 0.12);
+              transform: translateY(-1px);
+              color: var(--primary-color);
+          }
+          .holders-count {
+              color: inherit;
+          }
+          .holders-count.low {
+              color: var(--danger-color) !important;
+          }
+          .token-stat-item .holders-count {
+              color: var(--text-light);
+          }
+          .token-stat-item .holders-count.low {
+              color: var(--danger-color) !important;
+          }
+          .stat-value strong {
+              font-size: 13px;
+          }
+          .stat-value .dev-stat {
+              font-size: 10px;
+          }
+          .timeline-stats .stat-item strong {
+              transition: color 0.3s ease;
+          }
+          .danger-value {
+              color: var(--danger-color) !important;
+          }
+          .success {
+              color: var(--success-color);
+          }
+          .community-label[title] {
+              text-decoration: underline;
+              text-decoration-style: dotted;
+              text-underline-offset: 2px;
+          }
+          /* Add new styles for the 3-views carousel inside the sniper-section */
+          .carousel-controls {
+            height: 15.2px;
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              padding: 0 8px;
+              margin-bottom: 8px;
+          }
+          .carousel-controls h4 {
+              margin: 0;
+              font-size: 13px;
+              color: var(--text-light);
+          }
+          .nav-arrow {
+              background: #1a1a24; /* chage colour for button */
+              border: none;
+              color: var(--text-light);
+              width: 22px;
+              height: 22px;
+              border-radius: 50%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              cursor: pointer;
+              transition: all 0.2s ease;
+          }
+          .nav-arrow:hover {
+              background: rgba(255, 255, 255, 0.2);
+              transform: translateY(-1px);
+          }
+          .nav-arrow i {
+              font-size: 10px;
+          }
+          .holders-analysis-carousel {
+              display: flex;
+              gap: 6px;
+          }
+
+          /* Reverse layout for Page 3 */
+      .holders-analysis-carousel.reverse-layout {
+          flex-direction: row-reverse; /* Flip the order */
+      }
+
+          
+
+      /* Smooth transitions for visibility and layout changes */
+      .analysis-view {
+          flex: 1;
+          transition: opacity 0.3s ease, transform 0.3s ease;
+      }
+
+
+          .analysis-hidden {
+              display: none !important;
+              opacity: 0;
+              pointer-events: none;
+              transform: translateX(-100px);
+          }
+          /* End new carousel styles */
+          .chart-stat {
+              text-align: center;
+              font-size: 12px;
+              margin-top: 8px;
+              color: rgba(255, 255, 255, 0.8);
+          }
+          .chart-stat strong {
+              color: var(--text-light);
+          }
+          .wallet-stats-grid {
+              display: grid;
+              grid-template-columns: repeat(2, 1fr);
+              gap: 1px;
+              padding: 0px;
+              background: rgba(255, 255, 255, 0.02);
+              border-radius: 1px;
+          }
+          .stat-box {
+              background: rgba(255, 255, 255, 0.03);
+              border: 1px solid rgba(255, 255, 255, 0.08);
+              border-radius: 1px;
+              padding: 0px;
+              min-height: 12px;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+          }
+          .stat-box:hover {
+              background: rgba(255, 255, 255, 0.05);
+          }
+          .stat-box.active {
+              border-color: var(--primary-color);
+              background: rgba(var(--primary-rgb), 0.1);
+          }
+          .stat-header {
+              font-size: 11px;
+              color: rgba(255, 255, 255, 0.7);
+              margin-bottom: 0px;
+              display: flex;
+              align-items: center;
+              gap: 1px;
+          }
+          .stat-header i {
+              font-size: 6px;
+          }
+          .stat-values {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+          }
+          .stat-count {
+              font-size: 10px;
+              color: rgba(255, 255, 255, 0.5);
+          }
+          .stat-percentage {
+              font-size: 12px;
+              color: var(--text-light);
+              font-weight: 500;
+          }
+          .stat-title {
+              font-size: 6px;
+          }
+          .stat-info {
+              font-size: 5px;
+          }
+          .stat-value {
+              font-size: 5px;
+          }
+          .chart-box {
+              min-height: 80px;
+              padding: 1px;
+          }
+          .chart-box h5 {
+              margin: 0;
+          }
+          .stat-header span {
+              font-size: 10px;
+          }
+          .stat-count {
+              font-size: 10px;
+              color: rgba(255, 255, 255, 0.5);
+          }
+          .stat-percentage {
+              font-size: 11px;
+              color: var(--text-light);
+              font-weight: 500;
+          }
+
+/* 1) Ensure .search-header is a flex container to hold input + logos */
+.search-header {
+    display: flex;
+    padding: 8px;
+    background: var(--card-bg);
+    border-radius: 8px;
+    margin-bottom: 0;
+    align-items: center; /* Centers items vertically */
+  }
+  
+  /* 2) Container for the logos on the right */
+  .search-logos {
+    display: flex;
+    gap: 8px;         /* Space between the two icons */
+    margin-left: 8px; /* Spacing between input and the logos */
+  }
+  
+  /* 3) Circular button style for GitHub */
+  .github-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;      /* Slightly larger circle */
+    height: 28px;
+    background: rgb(255, 255, 255);
+    border-radius: 50%;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  
+  .github-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+  }
+  
+  /* 4) General icon sizing */
+  .logo-icon {
+    width: 34px;
+    height: 34px;
+    object-fit: contain;
+    
+  }
+  
+  /* 5) Add top padding only to Dragon icon */
+  .dragon-icon {
+    padding-top: 3px; /* Adjust as needed */
+    width: 24px;
+    height: 24px;
+  }
+
+
+
+
+
+
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <!-- Search Header -->
+    <!-- Search Header -->
+    <div class="search-header">
+        <input
+          type="text"
+          class="address-input"
+          placeholder="Enter CA that ends in 'pump'"
+        />
+        <!-- Container for the two logos -->
+        <div class="search-logos">
+
+          <!-- Dragon Logo (with hover text) -->
+          
+                    <!-- GitHub Button -->
+                    <a
+                    href="https://github.com/alpha-dragon-org"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="github-button"
+                    title="Contribute!"
+
+                  >
+                    <img
+                      src="../images/github2.png"
+                      alt="Contribute"
+                      class="logo-icon"
+                    />
+                  </a>
+                        <a
+                    href="https://linktr.ee/alphadragon"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Linktr.ee"
+                >
+                    <img
+                    src="../images/user-logo.png"
+                    alt="Learn more"
+                    class="logo-icon dragon-icon"
+                    />
+                </a>
+        </div>
+      </div>
+      <!-- Token Header -->
+      <div class="token-header">
+        <!-- Row 1 -->
+        <div class="header-row">
+          <!-- Column 1 - Image -->
+          <div class="image-column">
+            <div class="token-image-placeholder">
+              <img src="images/dragon.png" alt="Token Icon" />
+            </div>
+          </div>
+
+          <!-- Column 2 - Token Name -->
+          <div class="name-column">
+            <h3>Ticker</h3>
+            <p id="tickerValue">Loading..</p>
+            <div class="token-stats-grid">
+              <div class="token-stat-item">
+                <h4>Age</h4>
+                <p id="tokenAge">Loading....</p>
+              </div>
+              <div class="token-stat-item">
+                <h4>Holders</h4>
+                <p class="holders-count" id="holdersCount">>150</p>
+              </div>
+              <div class="token-stat-item">
+                <div class="community-status">
+                  <div class="community-icons">
+                    <i class="fas fa-user"></i>
+                  </div>
+                  <span class="community-label">Dev</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Column 3 - Market Cap -->
+          <div class="cap-column">
+            <h3>Market Cap</h3>
+            <p id="marketCap">Loading....</p>
+            <div class="security-grid">
+                <div class="security-item" id="mintStatus"   title="Mint Authority Revoked">
+                  <i class="fas fa-check-circle success"></i>
+                  <span>Mint</span>
+                </div>
+                <div class="security-item" id="freezeStatus" title="Freeze Authority Revoked">
+                  <i class="fas fa-check-circle success"></i>
+                  <span>Freeze</span>
+                </div>
+                <div class="security-item" id="lockedStatus" title="Liquidity Pool Locked">
+                  <i class="fas fa-check-circle success"></i>
+                  <span>Locked</span>
+                </div>
+                <div class="security-item" id="dexStatus" title="DEX Screener Paid">
+                  <i class="fas fa-check-circle success"></i>
+                  <span>DEX</span>
+                </div>
+              </div>
+              
+          </div>
+        </div>
+
+        <!-- Platform Links Row -->
+        <div class="platform-links">
+          <a href="#" class="platform-link inactive" title="Photon">
+            <img src="images/1.png" alt="Photon Icon" style="width: 20px; height: 15px;">
+
+          </a>
+          <a
+            href="https://pump.example.com"
+            class="platform-link"
+            title="pump.fun"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+          <img src="images/Pump-Fun-Logo white.png" alt="Pump Icon" style="width: 28px; height: 15px;">
+          </a>
+          <a
+            href="https://solscan.example.com"
+            class="platform-link"
+            title="Solscan"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+          <img src="images/3.png" alt="Solscan Icon" style="width: 20px; height: 15px;">
+          </a>
+          <a href="#" class="platform-link" title="DEX Screener" target="_blank" rel="noopener noreferrer">
+            <img src="images/2.png" alt="DexScreener Icon" style="width: 20px; height: 15px;">
+          </a>
+          <div class="platform-link-spacer"></div>
+          <a href="#" class="platform-link" title="Website" target="_blank" rel="noopener noreferrer">
+            <img src="images/website.png" alt="Website" style="width: 20px; height: 15px;">
+          </a>
+          <a
+            href="https://twitter.com/example"
+            class="platform-link"
+            title="X"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+          <img src="images/4.png" alt="Twitter Icon" style="width: 20px; height: 15px;">
+          </a>
+          <a href="#" class="platform-link" title="Telegram" target="_blank" rel="noopener noreferrer">
+            <img src="images/tele.png" alt="Telegram" style="width: 20px; height: 15px;">
+        </a>
+        </div>
+      </div>
+
+      <!-- Bundle Section -->
+      <div class="bundle-section">
+        <div class="bundle-header">
+          <div class="bundle-title-stats">
+            <h4>Bundle Analysis</h4>
+          </div>
+        </div>
+        <div class="bundle-chart-container">
+          <!-- <canvas id="bundleDistChart"></canvas> -->
+
+
+        </div>
+
+<!-- Message shown when bundleData is empty -->
+<div id="bundleDistMessage" 
+    style="display: flex; 
+    color: grey; 
+    font-size: 24px; 
+    text-align: center;
+    height: 100px;
+    width: 250px;
+    border: 2px solid grey;
+    align-items: center;
+    justify-content: center; /* Center text horizontally */
+    top: 50%;
+    left: 50%;
+    background-color: transparent;
+    padding-top: 55px;
+    border-radius: 12px;
+    max-width: 400px;
+    min-width: 150px;
+    font-size: 1em;
+    box-shadow: 0 4px 5px grey;
+    word-wrap: break-word; /* Ensure text wraps within the div */
+    word-break: break-word; /* Prevent long words from overflowing */
+    overflow-wrap: break-word; /* Prevents overflow */
+    white-space: normal; /* Ensures text can wrap within the div */
+">
+    <p style="padding-top: 20px;">It looks like everything held has been sold</p>.
+</div>
+
+
+
+
+        <div class="bundle-stats" style="margin-top: 12px">
+          <!-- Dynamically updated in charts.js -->
+          <div>Active Bundles: <strong>No Data</strong></div>
+          <div>Active Total: <strong>No Data</strong></div>
+        </div>
+      </div>
+
+      <!-- Timeline Content -->
+      <div class="timeline-content">
+        <div class="timeline-header">
+          <div class="bundle-title-stats">
+            <h4>Sniper Analysis</h4>
+          </div>
+        </div>
+        <div class="timeline-chart-wrapper">
+         
+          <div class="timeline-chart">
+            <canvas id="timelineChart"></canvas>
+          </div>
+        </div>
+
+        <div class="timeline-stats">
+          <div class="stat-item">
+            <span class="stat-label">Active Snipers: </span>
+            <strong>No Data</strong>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Active Total: </span>
+            <strong>No Data</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sniper Section (Holders Analysis with Carousel) -->
+      <div class="sniper-section">
+        <!-- <div class="sniper-header">
+                <div class="sniper-title-stats">
+                    <h4>Holders Analysis</h4>
+                </div>
+            </div> -->
+
+        <!-- Carousel Controls -->
+        <div class="carousel-controls">
+          <button id="prevBtn" class="nav-arrow">
+            <!-- <i class="fas fa-chevron-left"></i> -->
+          </button>
+          <h4>Holder Analysis</h4>
+          <button id="nextBtn" class="nav-arrow">
+            <!-- <i class="fas fa-chevron-right"></i> -->
+          </button>
+        </div>
+
+        <!-- Carousel Container with three sub-views: Clusters, Top Holders, Wallet Analysis -->
+        <div class="holders-analysis-carousel">
+          <!-- 1) Clusters Chart -->
+          <div class="analysis-view" id="clustersView">
+            <div class="chart-box">
+              <h5>Clusters</h5>
+              <div class="chart-wrapper">
+                <canvas id="clusterChart"></canvas>
+              </div>
+              <div class="chart-stat">Active Total: <strong>No Data</strong></div>
+            </div>
+          </div>
+
+          <!-- 2) Top Holders Chart -->
+          <div class="analysis-view" id="topHoldersView">
+            <div class="chart-box">
+              <h5>Top 10 Holders</h5>
+              <div class="chart-wrapper">
+                <canvas id="holdersChart"></canvas>
+              </div>
+              <div class="chart-stat">
+                Total: <strong id="totalHoldingsValue">No Data</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3) Wallet Analysis (merged) -->
+          
+        </div>
+        <!-- end .holders-analysis-carousel -->
+      </div>
+    </div>
+
+    <!-- <script src="web/script.js"></script> -->
+    <script src="chart2.js"></script>
+    <script type="module" src="charts.js"></script>
+    
+    <script src="sidepanel.js"></script>
+
+      
+
+  </body>
+</html>
+

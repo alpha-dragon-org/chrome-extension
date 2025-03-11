@@ -1,0 +1,30 @@
+{
+
+    "name": "Dragon",
+    "version": "0.4.4",
+    "manifest_version": 3,
+    "description": "Smarter DYOR for trading memecoins.",
+    "background": {
+        "service_worker": "service-worker.js"
+    },
+    "icons": {
+        "128": "images/icon-128.png",
+        "16": "images/icon-16.png"
+    },
+    "side_panel": {
+        "default_path": "sidepanel.html"
+    },
+    "permissions": [
+        "sidePanel"
+    ],
+    "host_permissions": [
+        "http://ec2-3-80-88-97.compute-1.amazonaws.com:3000/",
+        "http://ec2-3-80-88-97.compute-1.amazonaws.com:3001/",
+        "https://ec2-3-80-88-97.compute-1.amazonaws.com:3000/",
+        "https://ec2-3-80-88-97.compute-1.amazonaws.com:3001/"
+    ],
+    "content_security_policy": {
+        "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; connect-src 'self' http://ec2-3-80-88-97.compute-1.amazonaws.com:3000 https://ec2-3-80-88-97.compute-1.amazonaws.com:3000 http://ec2-3-80-88-97.compute-1.amazonaws.com:3001 https://ec2-3-80-88-97.compute-1.amazonaws.com:3001"
+    }
+
+}
