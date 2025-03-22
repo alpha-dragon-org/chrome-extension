@@ -129,8 +129,8 @@ if (bundleMessageElement) {
 // Function to fetch data from the API
 const fetchData = async () => {
     try {
-        const response = await fetch('http://ec2-3-80-88-97.compute-1.amazonaws.com:3000/fetchData');
-        // const response = await fetch('http://localhost:3000/fetchData');
+        // const response = await fetch('http://ec2-3-80-88-97.compute-1.amazonaws.com:3000/fetchData');
+        const response = await fetch('http://localhost:3000/fetchData');
         
         
         const data = await response.json();
@@ -162,8 +162,8 @@ const fetchData = async () => {
 // Function to send contract address to the Telegram bot
 const sendContractAddressToBot = async (contractAddress) => {
     try {
-        const apiEndpoint = 'http://ec2-3-80-88-97.compute-1.amazonaws.com:3001/sendContractAddress'; // Backend endpoint
-        // const apiEndpoint = 'http://localhost:3001/sendContractAddress'; // Backend endpoint
+        // const apiEndpoint = 'http://ec2-3-80-88-97.compute-1.amazonaws.com:3001/sendContractAddress'; // Backend endpoint
+        const apiEndpoint = 'http://localhost:3001/sendContractAddress'; // Backend endpoint
        
         
         // Log the payload for debugging
@@ -191,8 +191,8 @@ const sendContractAddressToBot = async (contractAddress) => {
 // Function to clear API data
 const clearAPIData = async () => {
     try {
-        const response = await fetch('http://ec2-3-80-88-97.compute-1.amazonaws.com:3000/clearData', {
-        // const response = await fetch('http://localhost:3000/clearData', {
+        // const response = await fetch('http://ec2-3-80-88-97.compute-1.amazonaws.com:3000/clearData', {
+        const response = await fetch('http://localhost:3000/clearData', {
             method: 'POST',
         });
 
@@ -784,7 +784,9 @@ function updateBundleDistChart(apiData) {
 async function fetchAndUpdateBundleDistChart() {
     console.log('[DEBUG] Fetching data for bundle chart...');
     try {
-        const response = await fetch('http://ec2-3-80-88-97.compute-1.amazonaws.com:3000/fetchData');
+        // const response = await fetch('http://ec2-3-80-88-97.compute-1.amazonaws.com:3000/fetchData');
+        const response = await fetch('http://localhost:3000/fetchData');
+
         if (!response.ok) throw new Error(`[Bundle Chart] HTTP error! Status: ${response.status}`);
         const data = await response.json();
         console.log('[DEBUG] Bundle Chart API data:', data);
@@ -1003,8 +1005,8 @@ function updateClusterChart(data) {
 
 async function fetchClusterDataAndUpdateChart() {
     try {
-        const response = await fetch('http://ec2-3-80-88-97.compute-1.amazonaws.com:3000/fetchData');
-        // const response = await fetch('http://localhost:3000/fetchData');
+        // const response = await fetch('http://ec2-3-80-88-97.compute-1.amazonaws.com:3000/fetchData');
+        const response = await fetch('http://localhost:3000/fetchData');
         
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -1036,8 +1038,8 @@ let topHoldersChartInstance = null;
 // Function to fetch data
 async function fetchTopHoldersData() {
     try {
-        const response = await fetch('http://ec2-3-80-88-97.compute-1.amazonaws.com:3000/fetchData');
-        // const response = await fetch('http://localhost:3000/fetchData');
+        // const response = await fetch('http://ec2-3-80-88-97.compute-1.amazonaws.com:3000/fetchData');
+        const response = await fetch('http://localhost:3000/fetchData');
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -1174,8 +1176,8 @@ let timelineChart = null; // Keep a global reference to the chart instance
 // Function to fetch sniper data from your backend
 async function fetchSniperData() {
     try {
-        const response = await fetch('http://ec2-3-80-88-97.compute-1.amazonaws.com:3000/fetchData');
-        // const response = await fetch('http://localhost:3000/fetchData');
+        // const response = await fetch('http://ec2-3-80-88-97.compute-1.amazonaws.com:3000/fetchData');
+        const response = await fetch('http://localhost:3000/fetchData');
         const data = await response.json();
         console.log('Raw API response:', data);
 
@@ -1712,8 +1714,8 @@ function updateCTOOrDevStatus(isCTO = true, devLink = null) {
 // --------------------------------------------
 async function fetchAndUpdateCTOOrDevStatus() {
     try {
-        const response = await fetch('http://ec2-3-80-88-97.compute-1.amazonaws.com:3000/fetchData'); // Replace with your API endpoint
-        // const response = await fetch('http://localhost:3000/fetchData'); // Replace with your API endpoint
+        // const response = await fetch('http://ec2-3-80-88-97.compute-1.amazonaws.com:3000/fetchData'); // Replace with your API endpoint
+        const response = await fetch('http://localhost:3000/fetchData'); // Replace with your API endpoint
 
         if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);
@@ -1810,6 +1812,5 @@ setInterval(fetchAndUpdateCTOOrDevStatus, 10000); // Update every 10 seconds
     // Initialize the carousel
     showCarouselItems();
 });
-
 
 
