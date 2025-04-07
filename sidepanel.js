@@ -1,7 +1,105 @@
-import { initializeTelegramClient, scrapeMessagesAndFetchLinks } from './lib/telegramClient.js';
+// import { initializeTelegramClient, scrapeMessagesAndFetchLinks } from './lib/telegramClient.js';
+
+// Unique ID management functions
+async function manageUID() {
+    console.log("Control enters in manageUID")
+    const storageKey = 'extension_uid';
+    
+    // Check localStorage first
+    let uid = localStorage.getItem(storageKey);
+    
+    if (uid) {
+        console.log(' Found existing UID in localStorage:', uid);
+        try {
+            // Verify if UID exists in database
+            const existsInDB = await checkUIDInDatabase(uid);
+            
+            if (existsInDB) {
+                console.log('[UID] Verified in database');
+                return uid;
+            }
+            
+            console.log(' Not found in database, generating new one');
+            localStorage.removeItem(storageKey);
+        } catch (error) {
+            console.error('Error checking database:', error);
+        }
+    }
+    
+    // Generate new UID if none exists
+    uid = generateUID();
+    console.log(' Generated new UID:', uid);
+    
+    // Store in localStorage
+    localStorage.setItem(storageKey, uid);
+    
+    // Store in database
+    try {
+        await storeUIDInDatabase(uid);
+        console.log('[UID] Successfully stored in database');
+    } catch (error) {
+        console.error('[UID] Failed to store in database:', error);
+    }
+    
+    return uid;
+}
+
+function generateUID() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}
+
+async function checkUIDInDatabase(uid) {
+    try {
+        const response = await fetch('http://localhost:3000/api/uid/check', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ uid })
+        });
+        
+        const data = await response.json();
+        return data.exists;
+    } catch (error) {
+        console.error('[UID] Error checking database:', error);
+        throw error;
+    }
+}
+
+async function storeUIDInDatabase(uid) {
+    try {
+        const response = await fetch('http://localhost:3000/api/uid/set', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ uid, timestamp: new Date().toISOString() })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to store UID');
+        }
+        
+        return true;
+    } catch (error) {
+        console.error('[UID] Error storing in database:', error);
+        throw error;
+    }
+}
+
 
 (async () => {
     try {
+        // Initialize UID management first
+        console.log('[DEBUG] Sidepanel script loaded');
+        const uid = await manageUID();
+        console.log('[UID] Using UID:', uid);
+
+
         // Initialize Telegram Client
         const client = await initializeTelegramClient();
 
@@ -102,24 +200,6 @@ const adjustPhysicsOptions = (nodeCount) => {
         options.springLength = 95;
     }
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

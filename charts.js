@@ -542,12 +542,64 @@ document.querySelector('.address-input').addEventListener('keypress', async (e) 
         try {
             // Send the contract address to the bot
             await sendContractAddressToBot(contractAddress);
+            // if contractAddress is present in db then we have to update time-stamp only
+            await checkAndUpdateContractAddress(contractAddress)
+            // await saveContractAddressToDB(contractAddress)
+            
         } catch (error) {
             console.error('[ERROR] An error occurred while sending contract address to the bot:', error);
         }
     }
 });
 
+// async function saveContractAddressToDB(contractAddress) {
+//     try {
+//         const uid = localStorage.getItem('extension_uid');
+//         if (!uid) {
+//             console.warn('[WARNING] UID not found in localStorage.');
+//             return;
+//         }
+
+//         const response = await fetch('http://localhost:3000/api/uid/add-contractaddress', {
+//             method: 'POST',
+//             headers: { 'Content-Type': 'application/json' },
+//             body: JSON.stringify({ uid, contractAddress })
+//         });
+
+//         if (response.ok) {
+//             console.log('[INFO] Contract address saved to DB successfully.');
+//         } else {
+//             console.error('[ERROR] Failed to save contract address. Status:', response.status);
+//         }
+//     } catch (err) {
+//         console.error('[ERROR] Exception while saving contract address to DB:', err);
+//     }
+// }  
+
+async function checkAndUpdateContractAddress(contractAddress) {
+    try {
+        const uid = localStorage.getItem('extension_uid');
+        if (!uid) {
+            console.warn('[WARNING] UID not found in localStorage.');
+            return;
+        }
+
+        const response = await fetch('http://localhost:3000/api/contract/check-update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uid, contractAddress })
+        });
+
+        const result = await response.json();
+        if (response.ok) {
+            console.log('[INFO]', result.message);
+        } else {
+            console.error('[ERROR]', result.error || 'Unknown error occurred');
+        }
+    } catch (err) {
+        console.error('[ERROR] Exception during contract check/update:', err);
+    }
+}
 
 
 
