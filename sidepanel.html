@@ -499,17 +499,39 @@
     gap: 1rem;
     position: relative;
     overflow: visible !important;
-   
-    
     padding: 4px;
     background: #31323c;
     border-radius: 8px;
     border: 1px solid rgba(255, 255, 255, 0.1);
-
-    
     flex: 1;
-    height: auto; 
+    min-height: 118px;
+    height: auto;
+    box-sizing: border-box;
 }
+
+          .bundle-empty-message {
+              display: none;
+              width: 100%;
+              min-height: 110px;
+              align-items: center;
+              justify-content: center;
+              text-align: center;
+              padding: 20px 24px;
+              box-sizing: border-box;
+          }
+
+          .bundle-empty-message.is-visible {
+              display: flex;
+          }
+
+          .bundle-empty-message__text {
+              font-size: 13px;
+              line-height: 1.5;
+              font-weight: 500;
+              color: rgba(255, 255, 255, 0.42);
+              max-width: 300px;
+              letter-spacing: 0.01em;
+          }
 
 .bundle-canvas {
     flex: 0 1 calc(33.33% - 1rem);
@@ -1325,10 +1347,10 @@
                     />
                   </a>
                         <a
-                    href="https://linktr.ee/alphadragon"
+                    href="https://alpha-dragon.ai/"
                     target="_blank"
                     rel="noopener noreferrer"
-                    title="Linktr.ee"
+                    title="website"
                 >
                     <img
                     src="../images/user-logo.png"
@@ -1345,7 +1367,7 @@
           <!-- Column 1 - Image -->
           <div class="image-column">
             <div class="token-image-placeholder">
-              <img src="images/dragon.png" alt="Token Icon" />
+              <img id="tokenImage" src="images/dragon.png" alt="Token Icon" />
             </div>
           </div>
 
@@ -1356,7 +1378,7 @@
             <div class="token-stats-grid">
               <div class="token-stat-item">
                 <h4>Age</h4>
-                <p id="tokenAge">Loading....</p>
+                <p id="tokenAge">Loading..</p>
               </div>
               <div class="token-stat-item">
                 <h4>Holders</h4>
@@ -1376,7 +1398,7 @@
           <!-- Column 3 - Market Cap -->
           <div class="cap-column">
             <h3>Market Cap</h3>
-            <p id="marketCap">Loading....</p>
+            <p id="marketCap">Loading..</p>
             <div class="security-grid">
                 <div class="security-item" id="mintStatus"   title="Mint Authority Revoked">
                   <i class="fas fa-check-circle success"></i>
@@ -1453,41 +1475,10 @@
           </div>
         </div>
         <div class="bundle-chart-container">
-          <!-- <canvas id="bundleDistChart"></canvas> -->
-
-
+          <div id="bundleDistMessage" class="bundle-empty-message" aria-hidden="true">
+            <span class="bundle-empty-message__text"></span>
+          </div>
         </div>
-
-<!-- Message shown when bundleData is empty -->
-<div id="bundleDistMessage" 
-    style="display: flex; 
-    color: grey; 
-    font-size: 24px; 
-    text-align: center;
-    height: 100px;
-    width: 250px;
-    border: 2px solid grey;
-    align-items: center;
-    justify-content: center; /* Center text horizontally */
-    top: 50%;
-    left: 50%;
-    background-color: transparent;
-    padding-top: 55px;
-    border-radius: 12px;
-    max-width: 400px;
-    min-width: 150px;
-    font-size: 1em;
-    box-shadow: 0 4px 5px grey;
-    word-wrap: break-word; /* Ensure text wraps within the div */
-    word-break: break-word; /* Prevent long words from overflowing */
-    overflow-wrap: break-word; /* Prevents overflow */
-    white-space: normal; /* Ensures text can wrap within the div */
-">
-    <p style="padding-top: 20px;">It looks like everything held has been sold</p>.
-</div>
-
-
-
 
         <div class="bundle-stats" style="margin-top: 12px">
           <!-- Dynamically updated in charts.js -->

@@ -1,9 +1,9 @@
 {
 
     "name": "Dragon",
-    "version": "0.4.4",
+    "version": "0.5.0.9",
     "manifest_version": 3,
-    "description": "Smarter DYOR for trading memecoins.",
+    "description": "Decentralizing token data to discover alpha.",
     "background": {
         "service_worker": "service-worker.js"
     },
@@ -18,13 +18,11 @@
         "sidePanel"
     ],
     "host_permissions": [
-        "http://localhost:3000/",
-        "http://localhost:3001/",
-        "https://localhost:3000/",
-        "https://localhost:3001/"
+        "https://dragon-backend-829421338007.us-central1.run.app/*"
+        
     ],
     "content_security_policy": {
-        "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; connect-src 'self' http://localhost:3000 https://localhost:3000 http://localhost:3001 https://localhost:3001"
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; connect-src 'self' https://dragon-backend-829421338007.us-central1.run.app; img-src 'self' https://imagedelivery.net"
     }
 
 }

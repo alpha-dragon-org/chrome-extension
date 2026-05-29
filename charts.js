@@ -1,20 +1,127 @@
 document.addEventListener('DOMContentLoaded', function () {
 
+    // While a lookup is in flight, empty API responses show "Loading.." not "N/A".
+    window.lookupInProgress = false;
+    window.lastContractAddress = null;
+    window.lastLookupStart = 0;
+    window.hadBundleData = false;
 
-
-
-
-    const bundleMessageElement = document.getElementById('bundleDistMessage');
-
-    // Hide the message div immediately when the extension loads
-    if (bundleMessageElement) {
-        bundleMessageElement.style.display = 'none'; // Hide the message div at the start
+    function getLatestRecord(data) {
+        return Array.isArray(data) && data.length > 0 ? data[data.length - 1] : null;
     }
 
+    function tokenFromPumpLink(record) {
+        if (!record?.pumpFunLink) return null;
+        return String(record.pumpFunLink).split('/').pop() || null;
+    }
+
+    // Prefer fetchedAt when the backend supports it; otherwise match the active contract.
+    function isFreshReport(record) {
+        if (!record) return false;
+        if (!window.lookupInProgress) return true;
+
+        const ts = record.fetchedAt || 0;
+        if (ts >= window.lastLookupStart - 2000) return true;
+
+        const token = tokenFromPumpLink(record);
+        return Boolean(
+            window.lastContractAddress &&
+            token &&
+            token === window.lastContractAddress
+        );
+    }
+
+    function shouldApplyApiData(data) {
+        const latest = getLatestRecord(data);
+        if (!latest) return !window.lookupInProgress;
+        if (!window.lookupInProgress) return true;
+        return isFreshReport(latest);
+    }
+
+    async function pollUntilLookupDone(maxMs = 90000, intervalMs = 2000) {
+        const deadline = Date.now() + maxMs;
+        while (Date.now() < deadline && window.lookupInProgress) {
+            if (typeof window.refreshAllPanels === 'function') {
+                await window.refreshAllPanels();
+            } else {
+                await fetchData();
+            }
+            await new Promise((resolve) => setTimeout(resolve, intervalMs));
+        }
+        if (window.lookupInProgress) {
+            console.warn('[WARN] Lookup timed out — ending loading state.');
+            window.lookupInProgress = false;
+            await fetchData();
+            if (typeof window.refreshAllPanels === 'function') {
+                await window.refreshAllPanels();
+            }
+        }
+    }
+
+    const NO_COORDINATED_SUPPLY_MSG = 'No meaningful coordinated supply';
+
+    function getBundleChartContainer() {
+        return document.querySelector('.bundle-chart-container');
+    }
+
+    function getBundleMessageElement() {
+        return document.getElementById('bundleDistMessage');
+    }
+
+    function setBundleEmptyMessage(visible, text) {
+        const container = getBundleChartContainer();
+        const el = getBundleMessageElement();
+        if (!container || !el) return;
+
+        if (el.parentElement !== container) {
+            container.appendChild(el);
+        }
+
+        const textEl = el.querySelector('.bundle-empty-message__text');
+        if (textEl) {
+            textEl.textContent = text || NO_COORDINATED_SUPPLY_MSG;
+        } else {
+            el.textContent = text || NO_COORDINATED_SUPPLY_MSG;
+        }
+
+        if (visible) {
+            container.style.display = 'flex';
+            container.style.alignItems = 'center';
+            container.style.justifyContent = 'center';
+            el.classList.add('is-visible');
+            el.setAttribute('aria-hidden', 'false');
+        } else {
+            el.classList.remove('is-visible');
+            el.setAttribute('aria-hidden', 'true');
+        }
+    }
+
+    setBundleEmptyMessage(false);
 
 
 
 
+
+
+    const TOKEN_IMAGE_CDN = 'https://imagedelivery.net/WL1JOIJiM_NAChp6rtB6Cw/coin-image';
+    const DEFAULT_TOKEN_IMAGE = chrome.runtime.getURL('images/dragon.png');
+
+    function updateTokenImage(contractAddress) {
+        const img = document.getElementById('tokenImage');
+        if (!img || !contractAddress) return;
+        img.onerror = () => {
+            img.onerror = null;
+            img.src = DEFAULT_TOKEN_IMAGE;
+        };
+        img.src = `${TOKEN_IMAGE_CDN}/${contractAddress}/86x86?alpha=true`;
+    }
+
+    function resetTokenImage() {
+        const img = document.getElementById('tokenImage');
+        if (!img) return;
+        img.onerror = null;
+        img.src = DEFAULT_TOKEN_IMAGE;
+    }
 
     function resetFields() {
 
@@ -23,10 +130,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
         // Reset text fields
-        document.getElementById('tickerValue').textContent = 'Loading....';
+        document.getElementById('tickerValue').textContent = 'Loading..';
         document.getElementById('tokenAge').textContent = '..';
         document.getElementById('holdersCount').textContent = '..';
-        document.getElementById('marketCap').textContent = 'Loading....';
+        document.getElementById('marketCap').textContent = 'Loading..';
 
         // Reset the Mint, Freeze, Locked, and DEX statuses
         const resetStatus = (id, iconClass, statusText) => {
@@ -42,6 +149,8 @@ document.addEventListener('DOMContentLoaded', function () {
         resetStatus('lockedStatus', 'fas fa-check-circle success', 'Locked');
         resetStatus('dexStatus', 'fas fa-check-circle success', 'DEX');
 
+        resetTokenImage();
+
         // Reset platform links
         const platformLinks = document.querySelectorAll('.platform-link');
         platformLinks.forEach((link) => {
@@ -50,22 +159,48 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         // Reset stats in the Bundle Analysis
-        document.querySelector('.bundle-stats div:nth-child(1) strong').textContent = 'Loading....';
-        document.querySelector('.bundle-stats div:nth-child(2) strong').textContent = 'Loading....';
+        document.querySelector('.bundle-stats div:nth-child(1) strong').textContent = 'Loading..';
+        document.querySelector('.bundle-stats div:nth-child(2) strong').textContent = 'Loading..';
 
         // Reset stats in Sniper Analysis
-        document.querySelector('.timeline-stats .stat-item:nth-child(1) strong').textContent = 'Loading....';
-        document.querySelector('.timeline-stats .stat-item:nth-child(2) strong').textContent = 'Loading....';
+        document.querySelector('.timeline-stats .stat-item:nth-child(1) strong').textContent = 'Loading..';
+        document.querySelector('.timeline-stats .stat-item:nth-child(2) strong').textContent = 'Loading..';
 
         // Reset stats in Holders Analysis
         document.querySelector('#clustersView .chart-stat strong').textContent = 'Loading..';
-        document.querySelector('#topHoldersView .chart-stat strong').textContent = 'Loading...';
+        document.querySelector('#topHoldersView .chart-stat strong').textContent = 'Loading..';
 
         console.log('[INFO] Fields reset to placeholders.');
     }
 
 
+// ────────────────────────────────────────────────────────────────
+// If the API comes back empty, show N/A everywhere
+// ────────────────────────────────────────────────────────────────
+function handleEmptyData () {
+  // header values
+  document.getElementById('tickerValue').textContent   = 'N/A';
+  document.getElementById('tokenAge').textContent      = 'N/A';
+  document.getElementById('holdersCount').textContent  = 'N/A';
+  document.getElementById('marketCap').textContent     = 'N/A';
 
+  // bundle stats
+  document.querySelector('.bundle-stats div:nth-child(1) strong').textContent = 'N/A';
+  document.querySelector('.bundle-stats div:nth-child(2) strong').textContent = 'N/A';
+
+  // timeline stats
+  document.querySelector('.timeline-stats .stat-item:nth-child(1) strong').textContent = 'N/A';
+  document.querySelector('.timeline-stats .stat-item:nth-child(2) strong').textContent = 'N/A';
+
+  // holders / clusters
+  document.querySelector('#clustersView   .chart-stat strong').textContent = 'N/A';
+  document.querySelector('#topHoldersView .chart-stat strong').textContent = 'N/A';
+
+  setBundleEmptyMessage(
+    true,
+    'This module is broken till we get a blockchain developer to fix it.'
+  );
+}
 
 
 
@@ -74,30 +209,23 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 
-        const bundleChartContainer = document.querySelector('.bundle-chart-container');
-        const bundleMessageElement = document.getElementById('bundleDistMessage');
+        const bundleChartContainer = getBundleChartContainer();
+        const bundleMessageElement = getBundleMessageElement();
 
         if (bundleChartContainer) {
-            // Clear out previous canvases
             bundleChartContainer.innerHTML = '';
-
-            // Create an empty placeholder div with a set height
-            const emptyContainer = document.createElement('div');
-            emptyContainer.style.width = '853.2px';  // Set desired width here
-            emptyContainer.style.height = '158.2px';  // Set desired height here
-            emptyContainer.style.backgroundColor = '#FFFFFF0D';  // Optional: Add a background color for visibility
-            // emptyContainer.style.boxShadow = '0 4px 5px grey';  
-            bundleChartContainer.appendChild(emptyContainer); // Add the placeholder div
+            bundleChartContainer.style.display = 'flex';
+            if (bundleMessageElement) {
+                const textEl = bundleMessageElement.querySelector('.bundle-empty-message__text');
+                if (!textEl) {
+                    bundleMessageElement.innerHTML =
+                        '<span class="bundle-empty-message__text"></span>';
+                }
+                bundleChartContainer.appendChild(bundleMessageElement);
+            }
         }
 
-
-
-        if (bundleMessageElement) {
-            // Clear out previous canvases
-            bundleMessageElement.innerHTML = '';
-            bundleMessageElement.style.boxShadow = 'none';
-
-        }
+        setBundleEmptyMessage(false);
 
 
 
@@ -118,6 +246,13 @@ document.addEventListener('DOMContentLoaded', function () {
             topHoldersChartInstance = null;
         }
 
+        // Clear the change-detection signatures so the charts re-render even when
+        // the same token is looked up again (its data signature is unchanged).
+        window.__bundleSig = null;
+        window.__clusterSig = null;
+        window.__topHoldersSig = null;
+        window.__sniperSig = null;
+
         console.log('[INFO] All charts reset to empty state.');
     }
 
@@ -129,18 +264,41 @@ document.addEventListener('DOMContentLoaded', function () {
     // Function to fetch data from the API
     const fetchData = async () => {
         try {
-            // const response = await fetch('http://ec2-3-80-88-97.compute-1.amazonaws.com:3000/fetchData');
-            // const response = await fetch('http://localhost:3000/fetchData');
+
             const uid = localStorage.getItem('extension_uid');
-            const response = await fetch(`http://localhost:3000/fetchData?uid=${uid}`);
+            // const response = await fetch(`https://localhost:3000/fetchData?uid=${uid}`);
+            const response = await fetch(`https://dragon-backend-829421338007.us-central1.run.app/v1/fetchData?uid=${uid}`);
 
 
             const data = await response.json();
             console.log("Fetched the data !");
             console.log(data);
 
+
+            if (!Array.isArray(data) || data.length === 0) {
+                if (window.lookupInProgress) {
+                    console.log('[INFO] Empty API while lookup in progress — keeping Loading.. state.');
+                    return;
+                }
+                console.warn('[INFO] Empty API array – treating as invalid token.');
+                handleEmptyData();
+                return;
+            }
             if (Array.isArray(data) && data.length > 0) {
-                const latestData = data[data.length - 1];
+                const latestData = getLatestRecord(data);
+                if (!shouldApplyApiData(data)) {
+                    console.log('[INFO] Stale API data ignored until fresh report arrives.');
+                    return;
+                }
+
+                if (latestData?.bundleData?.leftPanelData) {
+                    window.hadBundleData = true;
+                    if (isFreshReport(latestData)) {
+                        window.lookupInProgress = false;
+                    }
+                } else if (isFreshReport(latestData) && (latestData.tickerName || latestData.pumpFunLink)) {
+                    window.lookupInProgress = false;
+                }
 
                 updateTicker(latestData);         // Update the Ticker
                 // Update working components
@@ -162,32 +320,34 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
     // Function to send contract address to the Telegram bot
-    const sendContractAddressToBot = async (contractAddress) => {
+        const sendContractAddressToBot = async (contractAddress) => {
         try {
-            // const apiEndpoint = 'http://ec2-3-80-88-97.compute-1.amazonaws.com:3001/sendContractAddress'; // Backend endpoint
-            // const apiEndpoint = 'http://localhost:3001/sendContractAddress'; // Backend endpoint
             const uid = localStorage.getItem('extension_uid');
-            await fetch('http://localhost:3001/sendContractAddress', {
+
+            await fetch(
+            'https://dragon-backend-829421338007.us-central1.run.app/v2/sendContractAddress',
+            {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ contractAddress, uid }) // ✅ already sending UID
-            });
-
-
-            // Log the payload for debugging
-            console.log('[DEBUG] Payload being sent:', JSON.stringify({ contractAddress }));
-
-            const response = await fetch(apiEndpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ contractAddress }), // Correct key for backend
-            });
-
-            if (response.ok) {
-                console.log('[INFO] Contract address sent successfully:', contractAddress);
-            } else {
-                console.error('[ERROR] Failed to send contract address. Response:', response.status);
+                body: JSON.stringify({ contractAddress, uid, forceRefresh: true })
             }
+            );
+            // Log the payload for debugging
+            // console.log('[DEBUG] Payload being sent:', JSON.stringify({ contractAddress }));
+
+            // const response = await fetch(apiEndpoint, {
+            //     method: 'POST',
+            //     headers: { 'Content-Type': 'application/json' },
+            //     body: JSON.stringify({ contractAddress }), // Correct key for backend
+            // });
+
+            // if (response.ok) {
+            //     console.log('[INFO] Contract address sent successfully:', contractAddress);
+            // } else {
+            //     console.error('[ERROR] Failed to send contract address. Response:', response.status);
+            // }
+            console.log('[INFO] Contract address sent successfully:', contractAddress);
+
         } catch (error) {
             console.error('[ERROR] Error while sending contract address:', error.message);
         }
@@ -199,12 +359,10 @@ document.addEventListener('DOMContentLoaded', function () {
     // Function to clear API data
     const clearAPIData = async () => {
         try {
-            // const response = await fetch('http://ec2-3-80-88-97.compute-1.amazonaws.com:3000/clearData', {
-            // const response = await fetch('http://localhost:3000/clearData', {
-            //     method: 'POST',
-            // });
+
             const uid = localStorage.getItem('extension_uid');
-            await fetch('http://localhost:3000/clearData', {
+            // await fetch('https://localhost:3000/clearData', {
+            const response = await fetch('https://dragon-backend-829421338007.us-central1.run.app/v1/clearData', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ uid })
@@ -319,7 +477,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         // Update Pump Fun Link
-        const pumpLinkElement = document.querySelector("a[title='Pump']");
+        const pumpLinkElement = document.querySelector("a[title='Pump'], a[title='pump.fun']");
         if (pumpLinkElement && pumpFunLink) {
             pumpLinkElement.href = pumpFunLink;
             pumpLinkElement.classList.remove('inactive');
@@ -343,7 +501,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         // Update DexScreener Link
-        const dexscreenerLinkElement = document.querySelector("a[title='DexScreener']");
+        const dexscreenerLinkElement = document.querySelector("a[title='DexScreener'], a[title='DEX Screener']");
         if (dexscreenerLinkElement && dexscreenerLink) {
             dexscreenerLinkElement.href = dexscreenerLink;
             dexscreenerLinkElement.classList.remove('inactive');
@@ -355,7 +513,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         // Update Twitter Link
-        const twitterLinkElement = document.querySelector("a[title='Twitter']");
+        const twitterLinkElement = document.querySelector("a[title='Twitter'], a[title='X']");
         if (twitterLinkElement && twitterLink) {
             twitterLinkElement.href = twitterLink;
             twitterLinkElement.classList.remove('inactive');
@@ -532,37 +690,32 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            console.log('[INFO] New contract address entered. Resetting fields and charts:', contractAddress);
+            const isSameToken = window.lastContractAddress === contractAddress;
+            window.lastContractAddress = contractAddress;
+            window.lastLookupStart = Date.now();
+            window.lookupInProgress = true;
+            window.hadBundleData = false;
+
+            console.log('[INFO] Contract address entered:', contractAddress, isSameToken ? '(same token — force refresh)' : '(new token)');
 
             try {
-                // Reset charts and fields
                 resetFields();
                 resetCharts();
+                updateTokenImage(contractAddress);
             } catch (error) {
                 console.error('[ERROR] An error occurred while resetting fields or charts:', error);
-                return; // Exit if resetting fails
-            }
-            // Clear API data before sending a new contract address
-            try {
-                await clearAPIData();
-                console.log('[INFO] API data cleared successfully.');
-            } catch (error) {
-                console.error('[ERROR] Failed to clear API data:', error);
-                return; // Exit if clearing API data fails
+                window.lookupInProgress = false;
+                return;
             }
 
-            console.log('[INFO] Sending contract address to Telegram bot:', contractAddress);
-
             try {
-                // Send the contract address to the bot
                 await sendContractAddressToBot(contractAddress);
-                // if contractAddress is present in db then we have to update time-stamp only
-                await checkAndUpdateContractAddress(contractAddress)
-                // await saveContractAddressToDB(contractAddress)
-
+                await checkAndUpdateContractAddress(contractAddress);
             } catch (error) {
                 console.error('[ERROR] An error occurred while sending contract address to the bot:', error);
             }
+
+            pollUntilLookupDone();
         }
     });
 
@@ -574,7 +727,7 @@ document.addEventListener('DOMContentLoaded', function () {
     //             return;
     //         }
 
-    //         const response = await fetch('http://localhost:3000/api/uid/add-contractaddress', {
+    //         const response = await fetch('https://localhost:3000/api/uid/add-contractaddress', {
     //             method: 'POST',
     //             headers: { 'Content-Type': 'application/json' },
     //             body: JSON.stringify({ uid, contractAddress })
@@ -598,7 +751,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            const response = await fetch('http://localhost:3000/api/contract/check-update', {
+            const response = await fetch('https://dragon-backend-829421338007.us-central1.run.app/v1/api/contract/check-update', {
+            // const response = await fetch('https://localhost:3000/api/contract/check-update', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ uid, contractAddress })
@@ -621,7 +775,7 @@ document.addEventListener('DOMContentLoaded', function () {
     fetchData();
 
     // Fetch data every 5 seconds
-    setInterval(fetchData, 10000);
+    setInterval(fetchData, 5000);
 
 
 
@@ -639,7 +793,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Function to update Bundle Stats
     async function updateBundleStats(data) {
-        const secondItem = data[0];
+        const secondItem = data[data.length - 1];
         const bundleData = secondItem?.bundleData?.bundleData;
         console.log('Data passed to updateBundleStats:', data);
         console.log('Bundle Data Array:', bundleData);
@@ -674,45 +828,66 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             console.log('[Bundle Chart] Fetched API data:', apiData);
 
-            // Validate API response structure
             if (!apiData || !Array.isArray(apiData) || apiData.length < 1) {
-                console.error('[Bundle Chart] Invalid API data structure:', apiData);
+                const bundleRefreshing =
+                    window.lookupInProgress ||
+                    (window.hadBundleData && Date.now() - window.lastLookupStart < 90000);
+                if (bundleRefreshing) {
+                    document.querySelector('.bundle-stats div:nth-child(1) strong').textContent = 'Loading..';
+                    document.querySelector('.bundle-stats div:nth-child(2) strong').textContent = 'Loading..';
+                    setBundleEmptyMessage(false);
+                    bundleChartContainer.style.display = 'flex';
+                }
                 return;
             }
 
-            // If the newest data is at the end:
-            const bundleInfo = apiData[0]?.bundleData?.bundleData;
-            const leftPanelData = apiData[0]?.bundleData?.leftPanelData;
+            const latestRecord = apiData[apiData.length - 1];
+            const bundleInfo = latestRecord?.bundleData?.bundleData;
+            const leftPanelData = latestRecord?.bundleData?.leftPanelData;
 
             if (!leftPanelData) {
-                console.error('[Bundle Chart] Missing left panel data:', { bundleInfo, leftPanelData });
+                const bundleRefreshing =
+                    window.lookupInProgress ||
+                    (window.hadBundleData && Date.now() - window.lastLookupStart < 90000);
+                if (bundleRefreshing) {
+                    document.querySelector('.bundle-stats div:nth-child(1) strong').textContent = 'Loading..';
+                    document.querySelector('.bundle-stats div:nth-child(2) strong').textContent = 'Loading..';
+                    setBundleEmptyMessage(false);
+                }
                 return;
             }
 
             // Dynamically update "Active Total" with left panel data
             const totalHoldingElement = document.querySelector('.bundle-stats div:nth-child(2) strong');
+            const activeBundlesElement = document.querySelector('.bundle-stats div:nth-child(1) strong');
+            let totalHoldingValue = parseFloat(leftPanelData['Held Percentage'] || '0');
             if (totalHoldingElement) {
-                let totalHoldingValue = parseFloat(leftPanelData['Held Percentage'] || '0');
                 totalHoldingElement.textContent = `${totalHoldingValue.toFixed(1)}%`;
-                // Change text color to red if Active Total % > 15
                 totalHoldingElement.style.color = (totalHoldingValue > 15) ? '#ff1b4e' : '';
             }
 
-            // If bundleInfo is empty, show the "everything has been sold" message
+            const activeBundles = Array.isArray(bundleInfo) ? bundleInfo.length : 0;
+            if (activeBundlesElement) {
+                activeBundlesElement.textContent = String(activeBundles);
+                activeBundlesElement.style.color = (activeBundles > 5) ? '#ff1b4e' : '';
+            }
+
+            // Valid result: trench.bot returned stats but no clusters hold supply (0% held).
             if (!bundleInfo || !bundleInfo.length) {
-                console.warn('[Bundle Chart] No bundles available. Displaying message.');
-                bundleMessageElement.textContent = "It looks like everything held has been sold.";
-                bundleMessageElement.style.display = 'block';
-                bundleChartContainer.style.display = 'none';
+                bundleChartContainer.innerHTML = '';
+                if (bundleMessageElement) {
+                    bundleChartContainer.appendChild(bundleMessageElement);
+                }
+                setBundleEmptyMessage(true, NO_COORDINATED_SUPPLY_MSG);
+                window.hadBundleData = true;
                 return;
             } else {
+                setBundleEmptyMessage(false);
                 bundleChartContainer.style.display = 'flex';
-                if (bundleMessageElement) {
-                    bundleMessageElement.style.display = 'none';
-                }
             }
 
             console.log('[Bundle Chart] Processed bundle data:', bundleInfo);
+            window.hadBundleData = true;
 
             // Convert each bundle's "percentage" string to a number for chart sizing
             const numericBundleData = bundleInfo.map((bundle) => {
@@ -760,6 +935,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 const canvasSize = minSize + ratio * (maxSize - minSize);
                 canvas.style.width = canvasSize + 'px';
                 canvas.style.height = canvasSize + 'px';
+
+                // Make the bubble clickable -> open Solscan for the bundle's wallet.
+                if (bundle.wallet) {
+                    canvas.style.cursor = 'pointer';
+                    canvas.title = `View wallet on Solscan${bundle.walletCount ? ` (bundle of ${bundle.walletCount})` : ''}`;
+                    canvas.addEventListener('click', () => {
+                        window.open(`https://solscan.io/account/${bundle.wallet}`, '_blank', 'noopener');
+                    });
+                }
 
                 // Append the canvas to the container
                 bundleChartContainer.appendChild(canvas);
@@ -850,13 +1034,18 @@ document.addEventListener('DOMContentLoaded', function () {
     async function fetchAndUpdateBundleDistChart() {
         console.log('[DEBUG] Fetching data for bundle chart...');
         try {
-            // const response = await fetch('http://ec2-3-80-88-97.compute-1.amazonaws.com:3000/fetchData');
-            // const response = await fetch('http://localhost:3000/fetchData');
             const uid = localStorage.getItem('extension_uid');
-            const response = await fetch(`http://localhost:3000/fetchData?uid=${uid}`);
+            const response = await fetch(`https://dragon-backend-829421338007.us-central1.run.app/v1/fetchData?uid=${uid}`);
+            // const response = await fetch(`https://localhost:3000/fetchData?uid=${uid}`);
+
 
             if (!response.ok) throw new Error(`[Bundle Chart] HTTP error! Status: ${response.status}`);
             const data = await response.json();
+            if (!shouldApplyApiData(data)) return;
+            const latestRecord = getLatestRecord(data);
+            const sig = JSON.stringify(latestRecord?.bundleData ?? null);
+            if (!window.lookupInProgress && sig === window.__bundleSig) return;
+            window.__bundleSig = sig;
             console.log('[DEBUG] Bundle Chart API data:', data);
             updateBundleDistChart(data);
             updateBundleStats(data);
@@ -869,7 +1058,7 @@ document.addEventListener('DOMContentLoaded', function () {
     (function initializeBundleChart() {
         console.log('[DEBUG] Initializing bundle chart...');
         fetchAndUpdateBundleDistChart();
-        bundleUpdateInterval = setInterval(fetchAndUpdateBundleDistChart, 20000);
+        bundleUpdateInterval = setInterval(fetchAndUpdateBundleDistChart, 5000);
     })();
 
 
@@ -891,7 +1080,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Immediately update Cluster Holding text to "loading" or "no data"
         if (chartStatElement) {
-            chartStatElement.textContent = 'Loading...'; // Display 'loading' while waiting for data
+            chartStatElement.textContent = 'Loading..'; // Display 'loading' while waiting for data
         }
 
         if (!ctx) {
@@ -1073,15 +1262,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
     async function fetchClusterDataAndUpdateChart() {
         try {
-            // const response = await fetch('http://ec2-3-80-88-97.compute-1.amazonaws.com:3000/fetchData');
-            // const response = await fetch('http://localhost:3000/fetchData');
             const uid = localStorage.getItem('extension_uid');
-            const response = await fetch(`http://localhost:3000/fetchData?uid=${uid}`);
+            // const response = await fetch(`https://localhost:3000/fetchData?uid=${uid}`);
+            const response = await fetch(`https://dragon-backend-829421338007.us-central1.run.app/v1/fetchData?uid=${uid}`);
 
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             const data = await response.json();
+            if (!shouldApplyApiData(data)) return;
+            const sig = JSON.stringify(getLatestRecord(data)?.walletList ?? null);
+            if (!window.lookupInProgress && sig === window.__clusterSig) return;
+            window.__clusterSig = sig;
             console.log('Fetched data:', data);
             updateClusterChart(data);
         } catch (error) {
@@ -1090,7 +1282,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     fetchClusterDataAndUpdateChart();
-    setInterval(fetchClusterDataAndUpdateChart, 10000);
+    setInterval(fetchClusterDataAndUpdateChart, 5000);
 
 
 
@@ -1108,14 +1300,18 @@ document.addEventListener('DOMContentLoaded', function () {
     // Function to fetch data
     async function fetchTopHoldersData() {
         try {
-            // const response = await fetch('http://ec2-3-80-88-97.compute-1.amazonaws.com:3000/fetchData');
-            // const response = await fetch('http://localhost:3000/fetchData');
             const uid = localStorage.getItem('extension_uid');
-            const response = await fetch(`http://localhost:3000/fetchData?uid=${uid}`);
+            // const response = await fetch(`https://localhost:3000/fetchData?uid=${uid}`);
+            const response = await fetch(`https://dragon-backend-829421338007.us-central1.run.app/v1/fetchData?uid=${uid}`);
+
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             const data = await response.json();
+            if (!shouldApplyApiData(data)) return;
+            const sig = JSON.stringify(getLatestRecord(data)?.walletList ?? null);
+            if (!window.lookupInProgress && sig === window.__topHoldersSig) return;
+            window.__topHoldersSig = sig;
             console.log('Fetched data:', data);
             updateTopHoldersChart(data); // Update the chart with the fetched data
         } catch (error) {
@@ -1147,6 +1343,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const top10HolderData = topWallets.map((wallet) => wallet.percentage || 0);
             const top10HolderLabels = topWallets.map((wallet) => wallet.name || 'Unknown');
+            const top10HolderAddresses = topWallets.map((wallet) => wallet.address || null);
 
             const totalHoldings = top10HolderData.reduce((sum, value) => sum + value, 0);
 
@@ -1164,6 +1361,7 @@ document.addEventListener('DOMContentLoaded', function () {
             while (top10HolderData.length < 10) {
                 top10HolderData.push(0);
                 top10HolderLabels.push(`Holder #${top10HolderData.length}`);
+                top10HolderAddresses.push(null);
             }
 
             // Destroy existing chart instance if it exists
@@ -1193,6 +1391,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    // Click a holder bar -> open that wallet on Solscan.
+                    onClick: (evt, elements) => {
+                        if (elements && elements.length > 0) {
+                            const addr = top10HolderAddresses[elements[0].index];
+                            if (addr) window.open(`https://solscan.io/account/${addr}`, '_blank', 'noopener');
+                        }
+                    },
+                    // Show a pointer cursor only over clickable bars.
+                    onHover: (evt, elements) => {
+                        const addr = elements && elements.length > 0 ? top10HolderAddresses[elements[0].index] : null;
+                        evt.native.target.style.cursor = addr ? 'pointer' : 'default';
+                    },
                     plugins: {
                         legend: { display: false },
                         tooltip: {
@@ -1234,7 +1444,7 @@ document.addEventListener('DOMContentLoaded', function () {
     fetchTopHoldersData();
 
     // Set an interval to fetch data and update the chart every 10 seconds
-    setInterval(fetchTopHoldersData, 10000); // Adjust the interval as needed
+    setInterval(fetchTopHoldersData, 5000); // Adjust the interval as needed
 
 
 
@@ -1248,17 +1458,16 @@ document.addEventListener('DOMContentLoaded', function () {
     // Function to fetch sniper data from your backend
     async function fetchSniperData() {
         try {
-            // const response = await fetch('http://ec2-3-80-88-97.compute-1.amazonaws.com:3000/fetchData');
-            // const response = await fetch('http://localhost:3000/fetchData');
             const uid = localStorage.getItem('extension_uid');
-            const response = await fetch(`http://localhost:3000/fetchData?uid=${uid}`);
+            // const response = await fetch(`https://localhost:3000/fetchData?uid=${uid}`);
+            const response = await fetch(`https://dragon-backend-829421338007.us-central1.run.app/v1/fetchData?uid=${uid}`);
             const data = await response.json();
             console.log('Raw API response:', data);
 
-            // You might have multiple tokens in the array— find the first that has '🎯 Snipers & Early Buyers' or '🛠 Deployer'
-            const tokenData = data.find(item => item['🎯 Snipers & Early Buyers'] || item['🛠 Deployer']);
-            if (!tokenData) {
-                console.warn('No token data found in response');
+            if (!shouldApplyApiData(data)) return null;
+            const tokenData = getLatestRecord(data);
+            if (!tokenData || !(tokenData['🎯 Snipers & Early Buyers'] || tokenData['🛠 Deployer'])) {
+                console.warn('No fresh token data found in response');
                 return null;
             }
 
@@ -1544,6 +1753,9 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             const { labels, snipedValues, holdsValues } = parseSniperData(sniperData);
+            const sig = JSON.stringify({ labels, snipedValues, holdsValues });
+            if (!window.lookupInProgress && sig === window.__sniperSig) return;
+            window.__sniperSig = sig;
             const chartData = {
                 labels,
                 datasets: [
@@ -1641,7 +1853,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Initialize once, refresh every 10s
     renderSniperChart();
-    setInterval(renderSniperChart, 10000);
+    setInterval(renderSniperChart, 5000);
 
 
     // --------------------------------------------
@@ -1788,19 +2000,20 @@ document.addEventListener('DOMContentLoaded', function () {
     // --------------------------------------------
     async function fetchAndUpdateCTOOrDevStatus() {
         try {
-            // const response = await fetch('http://ec2-3-80-88-97.compute-1.amazonaws.com:3000/fetchData'); // Replace with your API endpoint
-            // const response = await fetch('http://localhost:3000/fetchData'); // Replace with your API endpoint
-            const uid = localStorage.getItem('extension_uid');
-            const response = await fetch(`http://localhost:3000/fetchData?uid=${uid}`);
 
+            const uid = localStorage.getItem('extension_uid');
+            // const response = await fetch(`https://localhost:3000/fetchData?uid=${uid}`);
+            const response = await fetch(`https://dragon-backend-829421338007.us-central1.run.app/v1/fetchData?uid=${uid}`);
+            
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
             }
             const data = await response.json();
+            if (!shouldApplyApiData(data)) return;
 
-            // Parse the API response to find the "🦅 Dexscreener" field
-            const dexscreenerData = data.find((item) => item['🦅 Dexscreener'])?.['🦅 Dexscreener'];
-            const solscanLinks = data.find((item) => item.solscanLinks)?.solscanLinks;
+            const latest = getLatestRecord(data);
+            const dexscreenerData = latest?.['🦅 Dexscreener'];
+            const solscanLinks = latest?.solscanLinks;
 
             if (dexscreenerData) {
                 const isCTO = getCTOStatusFromAPI(dexscreenerData);
@@ -1820,7 +2033,16 @@ document.addEventListener('DOMContentLoaded', function () {
     fetchAndUpdateCTOOrDevStatus();
 
     // Optional: Periodically update status if needed
-    setInterval(fetchAndUpdateCTOOrDevStatus, 10000); // Update every 10 seconds
+    setInterval(fetchAndUpdateCTOOrDevStatus, 5000);
+
+    window.refreshAllPanels = async () => {
+        await fetchData();
+        if (typeof fetchAndUpdateBundleDistChart === 'function') await fetchAndUpdateBundleDistChart();
+        if (typeof fetchClusterDataAndUpdateChart === 'function') await fetchClusterDataAndUpdateChart();
+        if (typeof fetchTopHoldersData === 'function') await fetchTopHoldersData();
+        if (typeof renderSniperChart === 'function') await renderSniperChart();
+        if (typeof fetchAndUpdateCTOOrDevStatus === 'function') await fetchAndUpdateCTOOrDevStatus();
+    };
 
 
 

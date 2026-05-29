@@ -54,7 +54,8 @@ function generateUID() {
 
 async function checkUIDInDatabase(uid) {
     try {
-        const response = await fetch('http://localhost:3000/api/uid/check', {
+        // const response = await fetch('https://localhost:3000/api/uid/check', {
+        const response = await fetch('https://dragon-backend-829421338007.us-central1.run.app/v1/api/uid/check', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -72,7 +73,8 @@ async function checkUIDInDatabase(uid) {
 
 async function storeUIDInDatabase(uid) {
     try {
-        const response = await fetch('http://localhost:3000/api/uid/set', {
+        // const response = await fetch('https://localhost:3000/api/uid/set', {
+        const response = await fetch('https://dragon-backend-829421338007.us-central1.run.app/v1/api/uid/set', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -99,22 +101,9 @@ async function storeUIDInDatabase(uid) {
         const uid = await manageUID();
         console.log('[UID] Using UID:', uid);
 
-
-        // Initialize Telegram Client
-        const client = await initializeTelegramClient();
-
-        // Start scraping messages and fetching links
-        await scrapeMessagesAndFetchLinks(client);
-
-        // Update every 5 seconds
-        setInterval(async () => {
-            console.log('[INFO] Updating data every 5 seconds...');
-            try {
-                await scrapeMessagesAndFetchLinks(client);
-            } catch (error) {
-                console.error('[ERROR] Failed to update data:', error);
-            }
-        }, 5000);
+        // The Telegram client and scraping run on the backend (Cloud Run), not in
+        // the extension. The side panel just registers the UID here; contract
+        // submission and data polling are handled in charts.js.
     } catch (error) {
         console.error('[ERROR] Something went wrong:', error);
     }
